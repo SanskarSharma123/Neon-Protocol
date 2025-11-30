@@ -291,31 +291,6 @@ h3::after {
   box-shadow: 0 0 15px var(--neon-blue);
 }
 
-/* --- NITRO BAR --- */
-.nitro-container { 
-  margin-top: 10px; 
-  background: rgba(20, 20, 30, 0.8); 
-  height: 12px; 
-  border-radius: 6px; 
-  overflow: hidden; 
-  border: 1px solid rgba(0, 243, 255, 0.2); 
-  position: relative; 
-}
-.nitro-fill { 
-  width: 0%; 
-  height: 100%; 
-  background: linear-gradient(90deg, #0055ff, #00f3ff); 
-  box-shadow: 0 0 20px var(--neon-blue); 
-  transition: width 0.1s linear, background 0.3s; 
-  border-radius: 5px;
-}
-.nitro-label { 
-  font-size: 14px; 
-  font-weight: 700; 
-  display:flex; 
-  justify-content:space-between;
-}
-
 /* --- LEADERBOARD --- */
 .player-row { 
   display: flex; 
@@ -510,7 +485,9 @@ input:focus {
   box-shadow: none; 
   transform: none;
 }
-.hidden { display: none; }
+.hidden { 
+  display: none !important; 
+}
 
 /* --- CHARACTER GRID --- */
 .character-grid { 
@@ -591,4 +568,226 @@ input:focus {
   right: 10px;
   border-left: none;
   border-top: none;
+}
+/* --- VICTORY OVERLAY --- */
+.victory-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+}
+
+.victory-content {
+  background: var(--panel-bg);
+  border: 2px solid var(--neon-blue);
+  padding: 40px;
+  border-radius: 8px;
+  text-align: center;
+  max-width: 500px;
+  box-shadow: 0 0 50px rgba(0, 243, 255, 0.3);
+  animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 50px rgba(0, 243, 255, 0.3); }
+  50% { box-shadow: 0 0 70px rgba(0, 243, 255, 0.6); }
+}
+
+.victory-title {
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--neon-blue);
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  margin-bottom: 20px;
+  text-shadow: 0 0 20px var(--neon-blue);
+  animation: text-glow 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes text-glow {
+  from { text-shadow: 0 0 20px var(--neon-blue); }
+  to { text-shadow: 0 0 30px var(--neon-blue), 0 0 40px var(--neon-blue); }
+}
+
+.victory-message {
+  font-size: 24px;
+  color: #fff;
+  margin-bottom: 30px;
+  font-weight: 600;
+}
+
+.victory-scores {
+  font-size: 18px;
+  color: #ccc;
+  margin-bottom: 25px;
+  line-height: 1.6;
+}
+
+.victory-timer {
+  font-size: 16px;
+  color: #888;
+  font-weight: 600;
+}
+
+/* Match timer warning states */
+.timer-warning {
+  color: #ffd700 !important;
+  animation: pulse 1s infinite;
+}
+
+.timer-critical {
+  color: #ff3366 !important;
+  animation: pulse 0.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* --- NITRO BAR (Consolidated) --- */
+/* --- NITRO BAR --- */
+/* --- NITRO BAR --- */
+.nitro-label { 
+  font-size: 14px; 
+  font-weight: 700; 
+  display: flex; 
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.nitro-container { 
+  margin-top: 5px; 
+  background: rgba(20, 20, 30, 0.9); 
+  border: 1px solid rgba(0, 243, 255, 0.3); 
+  height: 26px; 
+  border-radius: 13px; 
+  overflow: hidden; 
+  position: relative; 
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    0 0 10px rgba(0, 243, 255, 0.1);
+}
+
+.nitro-fill { 
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  background: linear-gradient(90deg, #00ff66, #00ffaa); 
+  border-radius: 12px;
+  box-shadow: 
+    0 0 15px rgba(0, 255, 102, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: width 0.1s ease-out, background 0.3s; 
+  z-index: 1;
+}
+
+/* Add a subtle inner glow effect */
+.nitro-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom, 
+    rgba(255, 255, 255, 0.2) 0%, 
+    transparent 50%, 
+    rgba(0, 0, 0, 0.1) 100%);
+  border-radius: 11px;
+}
+
+.nitro-text { 
+  position: absolute; 
+  width: 100%; 
+  text-align: center; 
+  top: 3px; 
+  font-size: 12px; 
+  font-weight: bold; 
+  color: #fff; 
+  text-shadow: 0 0 4px #000, 0 0 8px currentColor;
+  letter-spacing: 1px; 
+  z-index: 2;
+}
+
+/* Dynamic color states for the nitro bar */
+.nitro-fill.boost-active {
+  background: linear-gradient(90deg, #ffffff, #00f3ff);
+  box-shadow: 
+    0 0 20px rgba(0, 243, 255, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.nitro-fill.low-fuel {
+  background: linear-gradient(90deg, #ff0055, #ff3366);
+  box-shadow: 
+    0 0 15px rgba(255, 0, 85, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.nitro-fill.medium-fuel {
+  background: linear-gradient(90deg, #ff9900, #ffd700);
+  box-shadow: 
+    0 0 15px rgba(255, 153, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.nitro-fill.system-failure {
+  background: linear-gradient(90deg, #555, #777);
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* ADD THIS TO YOUR style.css - NITRO BAR FIX */
+.nitro-container { 
+  margin-top: 5px; 
+  background: rgba(20, 20, 30, 0.9) !important; 
+  border: 1px solid rgba(0, 243, 255, 0.3) !important; 
+  height: 26px !important; 
+  border-radius: 13px !important; 
+  overflow: hidden !important; 
+  position: relative !important; 
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    0 0 10px rgba(0, 243, 255, 0.1) !important;
+  width: 100% !important;
+}
+
+.nitro-fill { 
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  height: 100% !important;
+  width: 100% !important;
+  background: linear-gradient(90deg, #00ff66, #00ffaa) !important; 
+  border-radius: 12px !important;
+  box-shadow: 
+    0 0 15px rgba(0, 255, 102, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  transition: width 0.1s ease-out !important; 
+  z-index: 1 !important;
+  min-width: 5px !important;
+}
+
+.nitro-text { 
+  position: absolute !important; 
+  width: 100% !important; 
+  text-align: center !important; 
+  line-height: 26px !important;
+  font-size: 12px !important; 
+  font-weight: bold !important; 
+  color: #fff !important; 
+  text-shadow: 0 0 4px #000, 0 0 8px currentColor !important;
+  letter-spacing: 1px !important; 
+  z-index: 2 !important;
+  pointer-events: none !important;
 }

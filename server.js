@@ -25,8 +25,17 @@ const PLAYER_SIZE = 24;
 const COIN_SIZE = 12;
 const MEGAC_SIZE = 35; 
 
+// Victory Conditions
+const SCORE_THRESHOLD = 50;      // First to 50 points wins
+const TIME_LIMIT = 5 * 60 * 1000; // 5 minutes in milliseconds
+
 // Ramming cooldown system
 const RAM_COOLDOWN = 2000; // 2 seconds cooldown after ramming
+
+let gameStartTime = null;
+let gameWinner = null;
+let gameEndTime = null;
+let isStartingNewGame = false;
 
 /* ==========================================================================
    CHARACTER DEFINITIONS
@@ -94,14 +103,12 @@ let megaCoin = null;
 let nextMegaSpawnTime = 0; 
 let serverTick = 0;
 let gameActive = false;
+let countdownTimer = null;
 
 // Spawn initial items
 for (let i = 0; i < 5; i++) spawnCoin();
 scheduleNextMega(); 
 
-/* ==========================================================================
-   HELPER FUNCTIONS
-   ========================================================================== */
 /* ==========================================================================
    HELPER FUNCTIONS
    ========================================================================== */
@@ -195,12 +202,148 @@ function spawnMegaCoin() {
     broadcastDelayed({ type: 'event', text: `WARNING: MEGA COIN DETECTED!` });
 }
 
-function applyStun(victim) {
+function applyStun(victim, attacker) {
   const character = CHARACTERS[victim.character] || CHARACTERS.SPEEDSTER;
   victim.stunned = true;
   victim.stunEndTime = Date.now() + (character.stunDuration || STUN_DURATION);
-  victim.isBoosting = false; 
-  // REMOVED: victim.score = Math.max(0, victim.score - 5); 
+  victim.isBoosting = false;
+  
+  // POINT REDUCTION: Victim loses exactly 1 point when rammed
+  if (victim.score > 0) {
+    victim.score = Math.max(0, victim.score - 1); // Lose exactly 1 point
+  }
+  
+  victim.stunCount = (victim.stunCount || 0) + 1;
+}
+
+function checkVictoryConditions() {
+  if (!gameActive || gameWinner || isStartingNewGame) return;
+  
+  const now = Date.now();
+  const playersArray = Object.values(players);
+  
+  // 1. Check score threshold victory
+  const thresholdWinner = playersArray.find(p => p.score >= SCORE_THRESHOLD);
+  if (thresholdWinner) {
+    endGame(thresholdWinner, `DOMINATION: ${thresholdWinner.name} reached ${SCORE_THRESHOLD} points!`);
+    return;
+  }
+  
+  // 2. Check time limit victory
+  if (gameStartTime && now - gameStartTime >= TIME_LIMIT) {
+    const sortedPlayers = playersArray.sort((a, b) => b.score - a.score);
+    
+    if (sortedPlayers.length >= 2 && sortedPlayers[0].score === sortedPlayers[1].score) {
+      // Tie - no winner
+      endGame(null, `TIME'S UP: Draw game! Both players have ${sortedPlayers[0].score} points.`);
+    } else if (sortedPlayers.length > 0) {
+      // Clear winner
+      endGame(sortedPlayers[0], `TIME'S UP: ${sortedPlayers[0].name} wins with ${sortedPlayers[0].score} points!`);
+    } else {
+      endGame(null, "TIME'S UP: No winner!");
+    }
+    return;
+  }
+}
+
+function endGame(winner, message) {
+  gameActive = false;
+  gameWinner = winner;
+  gameEndTime = Date.now();
+  
+  broadcastDelayed({
+    type: 'gameOver',
+    winner: winner ? {
+      id: winner.id,
+      name: winner.name,
+      color: winner.color,
+      score: winner.score
+    } : null,
+    message: message,
+    finalScores: Object.values(players).map(p => ({
+      name: p.name,
+      score: p.score,
+      color: p.color,
+      character: p.character
+    })),
+    gameDuration: Date.now() - gameStartTime
+  });
+  
+  // Reset game after 8 seconds
+  setTimeout(() => {
+    resetGame();
+  }, 8000);
+}
+
+function resetGame() {
+  isStartingNewGame = true;
+  
+  // Reset players
+  Object.values(players).forEach(p => {
+    p.score = 0;
+    p.boostValue = 100;
+    p.stunned = false;
+    p.stunCount = 0;
+    p.ramCooldownEndTime = 0;
+    const spawn = getSpawnLocation();
+    p.x = spawn.x;
+    p.y = spawn.y;
+  });
+  
+  // Reset items
+  coins = [];
+  for (let i = 0; i < 5; i++) spawnCoin();
+  megaCoin = null;
+  scheduleNextMega();
+  
+  gameWinner = null;
+  gameStartTime = null;
+  gameEndTime = null;
+  
+  // Update: Broadcast status false so clients stop their 5:00 timer
+  broadcastDelayed({ type: 'status', active: false });
+
+  if (Object.keys(players).length >= 2) {
+    startGameCountdown();
+  } else {
+    isStartingNewGame = false;
+    broadcastDelayed({ type: 'event', text: 'WAITING FOR PLAYERS...' });
+  }
+}
+
+function startGameCountdown() {
+  // We use 8 seconds to match your HTML
+  let countdown = 8; 
+  
+  // 1. Tell clients to show the Overlay with the countdown
+  broadcastDelayed({ type: 'matchCountdown', count: countdown });
+  
+  countdownTimer = setInterval(() => {
+    countdown--;
+    
+    if (countdown > 0) {
+      // Optional: Send sync updates, but client handle logic is usually enough
+    } else {
+      clearInterval(countdownTimer);
+      startNewGame();
+    }
+  }, 1000);
+}
+
+function startNewGame() {
+  gameStartTime = Date.now();
+  gameActive = true;
+  isStartingNewGame = false;
+  
+  broadcastDelayed({ type: 'status', active: true });
+  broadcastDelayed({ type: 'event', text: '>>> MATCH STARTED! <<<' });
+  broadcastDelayed({ type: 'event', text: `First to ${SCORE_THRESHOLD} points or highest score in 5 minutes wins!` });
+}
+
+function checkGameStart() {
+  if (Object.keys(players).length >= 2 && !gameActive && !isStartingNewGame) {
+    startGameCountdown();
+  }
 }
 
 /* ==========================================================================
@@ -235,6 +378,7 @@ wss.on('connection', (ws) => {
           isBoosting: false, 
           stunned: false, 
           stunEndTime: 0,
+          stunCount: 0,
           // Ramming cooldown tracking
           ramCooldownEndTime: 0,
           baseSpeed: character.baseSpeed,
@@ -249,18 +393,14 @@ wss.on('connection', (ws) => {
         sendDelayed(ws, { type: 'init', selfId: playerId, spawn: spawnPoint });
         broadcastDelayed({ type: 'event', text: `SYSTEM: ${players[playerId].name} (${character.name}) connected.` });
 
-        // Logic for 2+ players
-        if (Object.keys(players).length >= 2 && !gameActive) {
-          gameActive = true;
-          scheduleNextMega();
-          broadcastDelayed({ type: 'event', text: `>>> MATCH STARTED <<<` });
-          broadcastDelayed({ type: 'status', active: true });
-        } else if (Object.keys(players).length < 2) {
-          // Send status inactive if waiting
-          sendDelayed(ws, { type: 'status', active: false });
+        // Check if we should start a game
+        checkGameStart();
+        
+        // Send current status
+        if (gameActive) {
+          sendDelayed(ws, { type: 'status', active: true });
         } else {
-           // Game already running
-           sendDelayed(ws, { type: 'status', active: true });
+          sendDelayed(ws, { type: 'status', active: false });
         }
       }
       else if (msg.type === 'input' && playerId && players[playerId]) {
@@ -287,15 +427,24 @@ wss.on('connection', (ws) => {
     if (playerId && players[playerId]) {
       broadcastDelayed({ type: 'event', text: `SYSTEM: ${players[playerId].name} disconnected.` });
       delete players[playerId];
+      
       if (Object.keys(players).length === 0) {
+        // No players left
         gameActive = false;
+        gameStartTime = null;
+        isStartingNewGame = false;
+        if (countdownTimer) clearInterval(countdownTimer);
         coins = [];
         megaCoin = null;
         for (let i = 0; i < 5; i++) spawnCoin();
       } else if (Object.keys(players).length < 2) {
+        // Not enough players, stop the game
         gameActive = false;
+        gameStartTime = null;
+        isStartingNewGame = false;
+        if (countdownTimer) clearInterval(countdownTimer);
         broadcastDelayed({ type: 'status', active: false });
-        broadcastDelayed({ type: 'event', text: `WAITING FOR PLAYERS...` });
+        broadcastDelayed({ type: 'event', text: 'WAITING FOR PLAYERS...' });
       }
     }
   });
@@ -309,8 +458,11 @@ setInterval(() => {
   const now = Date.now();
   const playerIds = Object.keys(players);
 
+  // Check victory conditions first
+  checkVictoryConditions();
+
   // 1. MEGA COIN
-  if (gameActive) {
+  if (gameActive && !gameWinner && !isStartingNewGame) {
       if (megaCoin) {
           if (now > megaCoin.expiresAt) {
               megaCoin = null;
@@ -339,7 +491,10 @@ setInterval(() => {
 
     while (p.inputs.length > 0) {
       const input = p.inputs.shift();
-      if (!gameActive || p.stunned) { p.lastProcessedInput = input.seq; continue; }
+      if (!gameActive || p.stunned || gameWinner || isStartingNewGame) { 
+        p.lastProcessedInput = input.seq; 
+        continue; 
+      }
 
       const hasFuel = p.boostValue > 1.0;
       if (input.dash && hasFuel) {
@@ -365,8 +520,8 @@ setInterval(() => {
     }
   }
 
-  // 3. COLLISIONS (RAMMING) - FIXED LOGIC
-  if (gameActive) {
+  // 3. COLLISIONS (RAMMING) - Only if game is active and no winner yet
+  if (gameActive && !gameWinner && !isStartingNewGame) {
     for (let i = 0; i < playerIds.length; i++) {
       for (let j = i + 1; j < playerIds.length; j++) {
         const p1 = players[playerIds[i]];
@@ -383,34 +538,38 @@ setInterval(() => {
           const p2CanBeRammed = !p2.stunned;
 
           if (p1CanRam && p2CanBeRammed && !p2CanRam) {
-            // P1 successfully rams P2 (P2 cannot ram back)
-            applyStun(p2); 
-            // NO POINTS GIVEN FOR RAMMING - REMOVED: p1.score += 3;
+            applyStun(p2, p1);
             p1.ramCooldownEndTime = now + RAM_COOLDOWN;
-            broadcastDelayed({ type: 'event', text: `CRITICAL: ${p1.name} STUNNED ${p2.name}!` });
+            broadcastDelayed({ 
+              type: 'event', 
+              text: `CRITICAL: ${p1.name} RAMMED ${p2.name}! ${p2.name} lost 1 point!` 
+            });
           }
           else if (p2CanRam && p1CanBeRammed && !p1CanRam) {
-            // P2 successfully rams P1 (P1 cannot ram back)
-            applyStun(p1); 
-            // NO POINTS GIVEN FOR RAMMING - REMOVED: p2.score += 3;
+            applyStun(p1, p2);
             p2.ramCooldownEndTime = now + RAM_COOLDOWN;
-            broadcastDelayed({ type: 'event', text: `CRITICAL: ${p2.name} STUNNED ${p1.name}!` });
+            broadcastDelayed({ 
+              type: 'event', 
+              text: `CRITICAL: ${p2.name} RAMMED ${p1.name}! ${p1.name} lost 1 point!` 
+            });
           }
           else if (p1CanRam && p2CanRam && p1CanBeRammed && p2CanBeRammed) {
-            // Head-on collision - both players ram each other
-            applyStun(p1); 
-            applyStun(p2);
+            applyStun(p1, p2);
+            applyStun(p2, p1);
             p1.ramCooldownEndTime = now + RAM_COOLDOWN;
             p2.ramCooldownEndTime = now + RAM_COOLDOWN;
-            broadcastDelayed({ type: 'event', text: `HEAD-ON COLLISION!` });
+            broadcastDelayed({ 
+              type: 'event', 
+              text: `HEAD-ON COLLISION! Both players lost 1 point!` 
+            });
           }
         }
       }
     }
   }
 
-  // 4. ITEMS
-  if (gameActive) {
+  // 4. ITEMS - Only if game is active and no winner yet
+  if (gameActive && !gameWinner && !isStartingNewGame) {
     for (const id of playerIds) {
       const p = players[id];
       // Coins
@@ -473,7 +632,7 @@ setInterval(() => {
     players: publicPlayers,
     coins,
     megaCoin, 
-    gameActive
+    gameActive: gameActive && !gameWinner && !isStartingNewGame // Send false if game ended or starting
   });
 }, 1000 / TICK_RATE);
 

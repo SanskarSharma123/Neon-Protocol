@@ -1,16 +1,15 @@
 # 🚀 NEON PROTOCOL
 
-**Neon Protocol** is a high-octane, multiplayer top-down arcade game built with **Node.js** and **WebSockets**. Set in a cyberpunk universe, players pilot unique hover-vehicles, competing to collect resources while ramming opponents into submission.
+Neon Protocol is a high-octane, multiplayer top-down arcade game built with Node.js and WebSockets. Set in a cyberpunk universe, players pilot unique hover-vehicles, competing to collect resources while ramming opponents into submission.
 
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen)
-![Tech](https://img.shields.io/badge/Tech-NodeJS_|_WebSockets_|_HTML5_Canvas-blue)
-![Latency](https://img.shields.io/badge/Simulated_Latency-200ms-red)
-
----
+![Tech Stack](https://img.shields.io/badge/Tech-NodeJS_%7C_WebSockets_%7C_HTML5_Canvas-blue)
+![Simulated Latency](https://img.shields.io/badge/Simulated_Latency-200ms-red)
 
 ## 📂 Project Structure
 
 The project is organized into a clean, modular structure:
+
 ```text
 /neon-protocol
 │
@@ -33,8 +32,6 @@ The project is organized into a clean, modular structure:
     └── explosion.mp3    # Damage SFX
 ```
 
----
-
 ## 🎮 How to Run
 
 ### Prerequisites
@@ -46,14 +43,14 @@ The project is organized into a clean, modular structure:
 1. Open your terminal/command prompt in the project folder.
 
 2. Initialize the project (if you haven't already):
-```bash
-npm init -y
-```
+   ```bash
+   npm init -y
+   ```
 
 3. Install the WebSocket library:
-```bash
-npm install ws
-```
+   ```bash
+   npm install ws
+   ```
 
 ### Starting the Server
 
@@ -71,9 +68,29 @@ You should see: `Server running on ws://localhost:8080`
 3. Select a **Color** and **Class**.
 4. Click **INITIALIZE**.
 
-**Tip:** To test multiplayer locally, open `index.html` in a second browser tab or window.
+**Tip**: To test multiplayer locally, open `index.html` in a second browser tab or window.
 
----
+## 🏆 Winning Conditions
+
+There are two ways to win a match in Neon Protocol:
+
+### 1. First to 50 Points
+**Primary Victory Condition**: The first player to reach 50 points immediately wins the match
+
+Points are earned through:
+- 🟡 **Gold Coins**: +1 point each
+- 🟣 **Mega Coins**: +3 points each
+- 💰 **Collector Class**: Chance for double points from coins
+
+### 2. Time Limit Victory
+- **Match Duration**: Each game lasts 5 minutes (300 seconds)
+- **End of Match**: When the timer reaches 0, the player with the highest score wins
+- **Tie Breaker**: If scores are tied when time expires, the match results in a DRAW
+
+### Game Flow
+- After a match ends (either by reaching 50 points or time limit), there's an 8-second countdown
+- The game automatically starts a new match after the countdown
+- All players return to the arena with reset scores for the next round
 
 ## ⚙️ Game Mechanics
 
@@ -92,7 +109,7 @@ There are 6 unique classes, each with different hitboxes and physics properties:
 
 - 🟡 **Gold Coin**: +1 Score (+2 for Collector/Hoarder chance).
 - 🔵 **Nitro Orb**: Refills your Boost Meter (Fuel).
-- 🔴 **Mine (Bomb)**: Damages your hull (-1 Score).
+- 🔴 **Mine (Bomb)**: Damages your hull (-1 Score, minimum 0).
 - 🟣 **MEGA COIN**: A rare event item that spawns periodically. Worth +3 Score.
 
 ### 3. The Ramming System
@@ -105,8 +122,6 @@ Combat is physics-based.
   - Stunned players appear grayish with an 'X' over them.
 - **Cooldown**: After a successful ram, you enter a 2-second cooldown where you cannot ram again.
 - **Scoring**: Ramming yields 0 Points. It is a tactical tool to stop opponents from winning, not a scoring method.
-
----
 
 ## 🧠 Technical Architecture & Evaluation
 
@@ -143,14 +158,17 @@ To prevent players from spawning on top of each other:
 2. For each candidate, it calculates the distance to the nearest existing player.
 3. It selects the candidate where the distance to the nearest player is the largest.
 
----
-
 ## 🛠️ Configuration
 
-You can tweak game balance in `server.js` under the `CONFIG` section:
+You can tweak game balance in `server.js` under the CONFIG section:
+
 ```javascript
 // Network Simulation
 const LATENCY_MS = 200;     // Critical Constraint: 200ms simulated lag
+
+// Game Settings
+const WINNING_SCORE = 50;   // Points needed to win instantly
+const MATCH_DURATION = 300; // 5-minute match timer (seconds)
 
 // Physics & Logic
 const TICK_RATE = 20;       // Server updates per second
@@ -158,45 +176,40 @@ const MAX_BOOST = 100;      // Max fuel
 const RAM_COOLDOWN = 2000;  // Time before you can ram again
 ```
 
----
-
 ## 🎯 Assessment Compliance
 
 This project was developed as a submission for the **Krafron Associate Game Developer Test** on Multiplayer State Synchronization.
 
 ### Requirements Met
 
-✅ **Part A - Game Requirements**
+**✅ Part A - Game Requirements**
 - Lobby system with multiplayer support
 - Player-controlled entities with collision detection
 - Resource collection system (coins/items)
 - Full server authority over game state
+- Enhanced: Multiple win conditions (score + timer)
 
-✅ **Part B - Network Quality Simulation**
+**✅ Part B - Network Quality Simulation**
 - 200ms artificial latency implemented on all server communications
 - Stress-tested for network resilience
 
-✅ **Part C - Evaluation Criteria**
+**✅ Part C - Evaluation Criteria**
 - **Smoothness**: Linear interpolation ensures fluid remote player movement
 - **Security**: Input-only client model with server-side validation and collision detection
 
 ### Design Decisions
 
-- **Enhanced Gameplay**: Extended beyond basic requirements with multiple character classes, combat mechanics, and varied collectibles to demonstrate deeper understanding of multiplayer systems
+- **Enhanced Gameplay**: Extended beyond basic requirements with multiple character classes, combat mechanics, varied collectibles, and dual win conditions to demonstrate deeper understanding of multiplayer systems
 - **Cyberpunk Theme**: Applied cohesive visual and audio design to showcase production quality
 - **Modular Architecture**: Clean separation between client rendering, server logic, and networking layers
-
----
 
 ## 📝 License
 
 This project is open source and available for educational purposes.
 
----
-
 ## 🙏 Acknowledgments
 
-Thank you to the **Krafron team** for this challenging and engaging assessment. Building Neon Protocol was an incredible opportunity to demonstrate my understanding of:
+Thank you to the Krafron team for this challenging and engaging assessment. Building Neon Protocol was an incredible opportunity to demonstrate my understanding of:
 
 - Real-time multiplayer networking architecture
 - Client-server authority models and anti-cheat design
@@ -206,12 +219,10 @@ Thank you to the **Krafron team** for this challenging and engaging assessment. 
 
 This assessment pushed me to think critically about network resilience, server authority, and creating smooth gameplay experiences despite challenging constraints. I'm excited about the possibility of bringing this passion and technical expertise to the Krafron team.
 
-**Thank you for your time and consideration!**
+Thank you for your time and consideration!
 
 ---
 
-**"In the Neon Protocol, only the fastest survive. See you on the grid."** ⚡
-
----
+*"In the Neon Protocol, only the fastest survive. See you on the grid."* ⚡
 
 *Developed with ❤️ and countless hours of debugging WebSocket race conditions.*

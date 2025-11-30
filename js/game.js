@@ -14,27 +14,24 @@ const AudioMgr = {
   sounds: {},
 
   init: function() {
-    // Prevent re-initialization if already loaded
     if (this.sounds['music']) return;
 
-    // UPDATED PATHS: now pointing to "music/" folder
     this.sounds['music'] = new Audio('music/synthwave_bg.mp3');
     this.sounds['nitro'] = new Audio('music/nitro.mp3');
     this.sounds['boost'] = new Audio('music/boost.mp3');
     this.sounds['coin']  = new Audio('music/coin.mp3');
     this.sounds['crash'] = new Audio('music/crash.mp3');
     this.sounds['explosion'] = new Audio('music/explosion.mp3');
+    this.sounds['victory'] = new Audio('music/victory.mp3'); 
 
-    // Settings
     this.sounds['music'].loop = true;
     this.sounds['music'].volume = 0.4;
     
     this.sounds['boost'].loop = true;
-    this.sounds['boost'].volume = 0; // Start silent
+    this.sounds['boost'].volume = 0; 
   },
 
   toggleMusic: function() {
-    // FIX: Initialize audio immediately if user clicks button before game starts
     if (!this.sounds['music']) this.init();
 
     this.enabled.music = !this.enabled.music;
@@ -42,7 +39,6 @@ const AudioMgr = {
     
     if(this.enabled.music) {
       btn.innerText = "MUSIC: ON"; btn.classList.add('active');
-      // Browser requires user interaction to play audio, clicking this button counts!
       this.sounds['music'].play().catch(e=>{ console.log("Audio autoplay blocked", e); });
     } else {
       btn.innerText = "MUSIC: OFF"; btn.classList.remove('active');
@@ -51,7 +47,6 @@ const AudioMgr = {
   },
 
   toggleSfx: function() {
-    // FIX: Initialize audio immediately here too
     if (!this.sounds['music']) this.init();
 
     this.enabled.sfx = !this.enabled.sfx;
@@ -71,16 +66,14 @@ const AudioMgr = {
   },
 
   setBoostVolume: function(targetVol) {
-    if(!this.sounds['boost']) return; // Safety check
+    if(!this.sounds['boost']) return; 
     if(!this.enabled.sfx) { this.sounds['boost'].volume = 0; return; }
     
-    // Smooth fade
     let current = this.sounds['boost'].volume;
     if(Math.abs(current - targetVol) > 0.01) {
       this.sounds['boost'].volume += (targetVol - current) * 0.2;
     }
     
-    // Ensure loop is playing if volume > 0
     if(this.sounds['boost'].volume > 0.01 && this.sounds['boost'].paused) {
       this.sounds['boost'].play().catch(e=>{});
     } else if (this.sounds['boost'].volume < 0.01) {
@@ -94,10 +87,26 @@ const CONFIG = { RENDER_BUFFER: 100, INPUT_RATE: 50, SPEED: 5, BOOST_SPEED: 12, 
 const COLORS = ['#00f3ff', '#ff0055', '#ffff00', '#00ff66', '#aa00ff', '#ff9900'];
 
 let socket, selectedColor = COLORS[0], selectedCharacter = "SPEEDSTER";
-let gameState = { myId: null, active: false, tick: 0, snapshots: [], pendingInputs: [], localPlayer: { x: 0, y: 0, trail: [] }, localBoostEstimate: 100, renderDelay: 200, keys: {}, particles: [], isStunned: false, gameActive: false, stars: [] };
+let countdownIntervalHandle = null; 
+let gameState = { 
+  myId: null, 
+  active: false, 
+  tick: 0, 
+  snapshots: [], 
+  pendingInputs: [], 
+  localPlayer: { x: 0, y: 0, trail: [] }, 
+  localBoostEstimate: 100, 
+  renderDelay: 200, 
+  keys: {}, 
+  particles: [], 
+  isStunned: false, 
+  gameActive: false, 
+  stars: [],
+  matchTimer: 300, 
+  gameOver: false
+};
 
 /* --- UI SETUP --- */
-// Color Picker
 const picker = document.getElementById('colorPicker');
 COLORS.forEach((c, i) => {
   const div = document.createElement('div');
@@ -151,7 +160,6 @@ function startGame() {
   const btn = document.querySelector('#characterModal .main-btn');
   btn.innerText = "CONNECTING..."; btn.disabled = true;
   
-  // Initialize Audio
   AudioMgr.init();
   if(AudioMgr.enabled.music) AudioMgr.sounds['music'].play().catch(e=>{});
   
@@ -185,22 +193,129 @@ function initNetwork(name, color, character, btn) {
       gameState.myId = msg.selfId;
       gameState.localPlayer = { ...msg.spawn, trail: [] };
       gameState.active = true;
-      document.getElementById('characterModal').classList.add('hidden'); // HIDE MODAL
+      gameState.matchTimer = 300; 
+      gameState.gameOver = false;
+      document.getElementById('characterModal').classList.add('hidden');
       
-      // Init Stars
       for(let i=0; i<50; i++) gameState.stars.push({ x: Math.random()*1200, y: Math.random()*800, s: Math.random()*2 });
       
       runGameLoops();
     } 
     else if (msg.type === 'state') handleState(msg);
     else if (msg.type === 'pong') updatePing(msg.clientTime);
-    else if (msg.type === 'event') logEvent(msg.text);
+    else if (msg.type === 'event') {
+      logEvent(msg.text);
+    }
+    // Handle Match Countdown
+    else if (msg.type === 'matchCountdown') {
+      handleMatchCountdown(msg.count);
+    }
+    // Status handling
     else if (msg.type === 'status') {
-       gameState.gameActive = msg.active;
-       toggleWaitingOverlay(!msg.active);
+      gameState.gameActive = msg.active;
+      
+      // Only show waiting overlay if not active, not game over, and NOT currently showing victory/countdown overlay
+      if (!msg.active && !gameState.gameOver && !document.querySelector('#victoryOverlay:not(.hidden)')) {
+        toggleWaitingOverlay(true);
+      } else {
+        toggleWaitingOverlay(false);
+      }
+
+      if (msg.active) {
+        gameState.matchTimer = 300;
+        updateTimerDisplay();
+      }
     }
     else if (msg.type === 'chat') handleChat(msg);
+    else if (msg.type === 'gameOver') handleGameOver(msg);
   };
+}
+
+// Function to handle the start-game countdown overlay
+function handleMatchCountdown(seconds) {
+  toggleWaitingOverlay(false);
+
+  const overlay = document.getElementById('victoryOverlay');
+  const title = document.getElementById('victoryTitle');
+  const message = document.getElementById('victoryMessage');
+  const scores = document.getElementById('victoryScores');
+  const timerElement = document.getElementById('restartTimer');
+
+  title.innerText = "GET READY";
+  title.style.color = "#00f3ff";
+  message.innerText = "SYSTEM INITIALIZING...";
+  scores.innerHTML = ""; 
+  
+  overlay.classList.remove('hidden');
+
+  let currentCount = seconds;
+  timerElement.innerText = currentCount;
+
+  if (countdownIntervalHandle) clearInterval(countdownIntervalHandle);
+
+  countdownIntervalHandle = setInterval(() => {
+    currentCount--;
+    timerElement.innerText = currentCount;
+    
+    if (currentCount <= 0) {
+      clearInterval(countdownIntervalHandle);
+      overlay.classList.add('hidden');
+      AudioMgr.play('boost'); 
+    } else {
+      AudioMgr.play('coin'); 
+    }
+  }, 1000);
+}
+
+function handleGameOver(msg) {
+  gameState.gameOver = true;
+  gameState.gameActive = false;
+  gameState.matchTimer = 300; 
+  
+  const overlay = document.getElementById('victoryOverlay');
+  const title = document.getElementById('victoryTitle');
+  const message = document.getElementById('victoryMessage');
+  const scores = document.getElementById('victoryScores');
+  
+  if (msg.winner) {
+    if (msg.winner.id === gameState.myId) {
+      title.innerText = "VICTORY!";
+      title.style.color = "#ffd700";
+      AudioMgr.play('victory');
+    } else {
+      title.innerText = "DEFEAT";
+      title.style.color = "#ff3366";
+    }
+  } else {
+    title.innerText = "DRAW GAME";
+    title.style.color = "#00f3ff";
+  }
+  
+  message.innerText = msg.message;
+  
+  scores.innerHTML = msg.finalScores.map(player => 
+    `<div style="color: ${player.color}">${player.name}: ${player.score} points</div>`
+  ).join('');
+  
+  overlay.classList.remove('hidden');
+  
+  let countdown = 8;
+  const timerElement = document.getElementById('restartTimer');
+  timerElement.innerText = countdown;
+
+  // Clear any existing countdowns
+  if (countdownIntervalHandle) clearInterval(countdownIntervalHandle);
+  
+  countdownIntervalHandle = setInterval(() => {
+    countdown--;
+    timerElement.innerText = countdown;
+    
+    if (countdown <= 0) {
+      clearInterval(countdownIntervalHandle);
+      overlay.classList.add('hidden');
+      gameState.gameOver = false;
+    }
+  }, 1000);
 }
 
 function toggleWaitingOverlay(show) {
@@ -236,9 +351,26 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('keyup', e => gameState.keys[e.key] = false);
 
+/* --- TIMER SYSTEM --- */
+function updateTimerDisplay() {
+  const minutes = Math.floor(gameState.matchTimer / 60);
+  const seconds = gameState.matchTimer % 60;
+  const timerElement = document.getElementById('matchTimer');
+  
+  timerElement.innerText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  
+  timerElement.classList.remove('timer-warning', 'timer-critical');
+  if (gameState.matchTimer < 60) {
+    timerElement.classList.add('timer-critical');
+  } else if (gameState.matchTimer < 120) {
+    timerElement.classList.add('timer-warning');
+  }
+}
+
 function runGameLoops() {
+  // Input loop
   setInterval(() => {
-    if(!gameState.active || gameState.isStunned || !gameState.gameActive) {
+    if(!gameState.active || gameState.isStunned || !gameState.gameActive || gameState.gameOver) {
       AudioMgr.setBoostVolume(0); 
       return;
     }
@@ -247,14 +379,14 @@ function runGameLoops() {
     const dy = (gameState.keys['ArrowDown']?1:0) - (gameState.keys['ArrowUp']?1:0);
     const dash = gameState.keys[' ']; 
     
-    // BOOST SOUND LOGIC
     if (dash && gameState.localBoostEstimate > 1) {
       AudioMgr.setBoostVolume(0.5);
     } else {
       AudioMgr.setBoostVolume(0);
     }
 
-    if(dx===0 && dy===0 && !dash) return;
+    // FIX: Send input even when idle to allow regen
+    // if(dx===0 && dy===0 && !dash) return; 
 
     gameState.tick++;
     const input = { seq: gameState.tick, x: dx, y: dy, dash };
@@ -263,6 +395,14 @@ function runGameLoops() {
     gameState.pendingInputs.push(input);
     applyPhysics(gameState.localPlayer, input);
   }, CONFIG.INPUT_RATE);
+
+  // Timer loop
+  setInterval(() => {
+    if (gameState.gameActive && !gameState.gameOver && gameState.matchTimer > 0) {
+      gameState.matchTimer--;
+      updateTimerDisplay();
+    }
+  }, 1000);
 
   requestAnimationFrame(render);
   
@@ -292,7 +432,6 @@ function applyPhysics(entity, input) {
 
 function handleState(msg) {
   gameState.gameActive = msg.gameActive;
-  toggleWaitingOverlay(!msg.gameActive);
 
   gameState.snapshots.push(msg);
   if(gameState.snapshots.length > 60) gameState.snapshots.shift();
@@ -334,7 +473,6 @@ function handleState(msg) {
       gameState.localPlayer.y += (sim.y - gameState.localPlayer.y) * 0.1;
     }
 
-    // --- SCORE SOUND LOGIC ---
     if (gameState.lastScore !== undefined) {
       const diff = serverP.score - gameState.lastScore;
       
@@ -343,15 +481,14 @@ function handleState(msg) {
         spawnParticles(serverP.x, serverP.y, 'gold');
         AudioMgr.play('coin');
       }
-      // MEGA COIN or Ram
       else if (diff > 1) {
         triggerShake();
         spawnParticles(serverP.x, serverP.y, 'gold');
-        // 'crash' sound or epic sound
       }
       else if (diff < 0) {
         triggerShake();
         spawnParticles(serverP.x, serverP.y, 'red');
+        AudioMgr.play('explosion');
       }
     }
     gameState.lastScore = serverP.score;
@@ -423,7 +560,7 @@ function render() {
     ctx.shadowBlur = 0;
   });
 
-  // 4. MEGA COIN RENDER
+  // 4. MEGA COIN
   if (state.megaCoin) {
       const mc = state.megaCoin;
       const remaining = Math.max(0, Math.ceil((mc.expiresAt - (time + gameState.renderDelay))/1000)); 
@@ -449,13 +586,13 @@ function render() {
       ctx.shadowBlur = 0;
   }
 
-  // 5. PLAYERS - UNIQUE SHAPES FOR EACH CHARACTER
+  // 5. PLAYERS
   Object.values(state.players).forEach(p => {
     const isMe = p.id === gameState.myId;
     const pos = isMe ? gameState.localPlayer : p;
     
     if (!pos.trail) pos.trail = [];
-    if (gameState.tick % 3 === 0 && !p.stunned && gameState.gameActive) { 
+    if (gameState.tick % 3 === 0 && !p.stunned && gameState.gameActive && !gameState.gameOver) { 
       pos.trail.push({x: pos.x, y: pos.y});
       if(pos.trail.length > 20) pos.trail.shift();
     }
@@ -463,8 +600,6 @@ function render() {
     if (!p.stunned) {
       pos.trail.forEach((t, i) => {
         ctx.globalAlpha = (i / 20) * 0.5; ctx.fillStyle = p.color;
-        
-        // Trail matches character shape - smaller size for trail
         const charType = p.character || 'SPEEDSTER';
         drawCharacterShape(ctx, t.x + 8, t.y + 8, 8, 8, charType, p.color, false);
       });
@@ -472,14 +607,10 @@ function render() {
     }
 
     if (p.stunned) {
-      // Stunned state - X mark over character
       ctx.strokeStyle = '#ff0055'; ctx.lineWidth = 2;
-      
-      // Draw stunned character shape
       ctx.fillStyle = '#333'; 
       drawCharacterShape(ctx, pos.x, pos.y, CONFIG.PLAYER_SIZE, CONFIG.PLAYER_SIZE, p.character || 'SPEEDSTER', '#333', false);
       
-      // X mark
       ctx.beginPath(); 
       ctx.moveTo(pos.x, pos.y); 
       ctx.lineTo(pos.x+24, pos.y+24); 
@@ -489,10 +620,7 @@ function render() {
     } else {
       ctx.shadowBlur = p.isBoosting ? 30 : 10; 
       ctx.shadowColor = p.color;
-      
-      // Draw unique character shape
       drawCharacterShape(ctx, pos.x, pos.y, CONFIG.PLAYER_SIZE, CONFIG.PLAYER_SIZE, p.character || 'SPEEDSTER', p.color, p.isBoosting);
-      
       ctx.shadowBlur = 0;
     }
     
@@ -503,7 +631,6 @@ function render() {
   updateParticles();
 }
 
-// NEW FUNCTION: Draw unique shapes for each character with proper sizing
 function drawCharacterShape(ctx, x, y, width, height, characterType, color, isBoosting) {
   const centerX = x + width/2;
   const centerY = y + height/2;
@@ -513,7 +640,6 @@ function drawCharacterShape(ctx, x, y, width, height, characterType, color, isBo
   ctx.strokeStyle = color;
   ctx.lineWidth = 2;
   
-  // Scale factors for different characters
   const scaleFactors = {
     'SPEEDSTER': 0.7,
     'TANK': 1.0,
@@ -535,7 +661,6 @@ function drawCharacterShape(ctx, x, y, width, height, characterType, color, isBo
   
   switch(characterType) {
     case 'SPEEDSTER':
-      // 🚀 Rocket shape - smaller triangle
       ctx.beginPath();
       ctx.moveTo(drawCenterX, drawY);
       ctx.lineTo(drawX + scaledSize, drawY + scaledSize);
@@ -544,7 +669,6 @@ function drawCharacterShape(ctx, x, y, width, height, characterType, color, isBo
       ctx.fill();
       ctx.stroke();
       
-      // Rocket details
       if (!isBoosting) {
         ctx.fillStyle = color;
         ctx.fillRect(drawCenterX - 2, drawY + scaledSize - 6, 4, 3);
@@ -552,7 +676,6 @@ function drawCharacterShape(ctx, x, y, width, height, characterType, color, isBo
       break;
       
     case 'TANK':
-      // 🛡️ Shield/Hexagon shape - normal size
       ctx.beginPath();
       for(let i = 0; i < 6; i++) {
         const angle = (i * 2 * Math.PI / 6) - Math.PI/2;
@@ -565,7 +688,6 @@ function drawCharacterShape(ctx, x, y, width, height, characterType, color, isBo
       ctx.fill();
       ctx.stroke();
       
-      // Center dot
       ctx.fillStyle = color;
       ctx.beginPath();
       ctx.arc(drawCenterX, drawCenterY, 3, 0, Math.PI * 2);
@@ -573,11 +695,9 @@ function drawCharacterShape(ctx, x, y, width, height, characterType, color, isBo
       break;
       
     case 'GHOST':
-      // 👻 Ghost shape - very small and evasive
       ctx.beginPath();
       ctx.arc(drawCenterX, drawCenterY - 2, scaledSize/2 - 2, 0, Math.PI, true);
       
-      // Wavy bottom
       const waveCount = 3;
       const waveWidth = scaledSize / waveCount;
       for(let i = 0; i < waveCount; i++) {
@@ -589,7 +709,6 @@ function drawCharacterShape(ctx, x, y, width, height, characterType, color, isBo
       ctx.fill();
       ctx.stroke();
       
-      // Eyes
       ctx.fillStyle = '#fff';
       ctx.beginPath();
       ctx.arc(drawCenterX - 3, drawCenterY - 2, 1.5, 0, Math.PI * 2);
@@ -598,7 +717,6 @@ function drawCharacterShape(ctx, x, y, width, height, characterType, color, isBo
       break;
       
     case 'COLLECTOR':
-      // 💰 Diamond/coin shape - medium size
       ctx.beginPath();
       ctx.moveTo(drawCenterX, drawY);
       ctx.lineTo(drawX + scaledSize, drawCenterY);
@@ -608,7 +726,6 @@ function drawCharacterShape(ctx, x, y, width, height, characterType, color, isBo
       ctx.fill();
       ctx.stroke();
       
-      // $ symbol when not boosting
       if (!isBoosting) {
         ctx.fillStyle = '#ffd700';
         ctx.font = 'bold 8px Arial';
@@ -619,7 +736,6 @@ function drawCharacterShape(ctx, x, y, width, height, characterType, color, isBo
       break;
       
     case 'JUGGERNAUT':
-      // ⚡ Lightning bolt/angular shape - slightly smaller
       ctx.beginPath();
       ctx.moveTo(drawCenterX - 3, drawY);
       ctx.lineTo(drawX + scaledSize - 2, drawCenterY - 3);
@@ -633,7 +749,6 @@ function drawCharacterShape(ctx, x, y, width, height, characterType, color, isBo
       break;
       
     case 'TRICKSTER':
-      // 🎭 Diamond with cut corners - small and tricky
       ctx.beginPath();
       ctx.moveTo(drawCenterX, drawY + 2);
       ctx.lineTo(drawX + scaledSize - 2, drawCenterY - 2);
@@ -645,7 +760,6 @@ function drawCharacterShape(ctx, x, y, width, height, characterType, color, isBo
       ctx.fill();
       ctx.stroke();
       
-      // Mask-like details
       ctx.strokeStyle = color;
       ctx.beginPath();
       ctx.moveTo(drawCenterX - 4, drawCenterY);
@@ -654,13 +768,11 @@ function drawCharacterShape(ctx, x, y, width, height, characterType, color, isBo
       break;
       
     default:
-      // Default: Rounded rectangle
       ctx.beginPath();
       ctx.roundRect(drawX, drawY, scaledSize, scaledSize, 4);
       ctx.fill();
       ctx.stroke();
       
-      // Default center dot
       ctx.fillStyle = '#fff';
       ctx.fillRect(drawX + scaledSize/2 - 4, drawY + scaledSize/2 - 4, 8, 8);
   }
@@ -678,7 +790,6 @@ function getInterpolatedState() {
       const p0 = buffer[0].players[id] || p1;
       players[id] = { ...p1, x: p0.x + (p1.x - p0.x) * r, y: p0.y + (p1.y - p0.y) * r };
     });
-    // Pass megaCoin from the latest snapshot available
     return { players, coins: buffer[1].coins, megaCoin: buffer[1].megaCoin };
   }
   return buffer[0];
@@ -708,37 +819,66 @@ function triggerShake() {
 }
 
 function updateUI(players) {
+  // 1. Leaderboard
   const sorted = Object.values(players).sort((a,b)=>b.score - a.score);
   document.getElementById('scoreboard').innerHTML = sorted.map(p => `
     <div class="player-row ${p.id===gameState.myId?'me':''}">
       <span style="color:${p.color}">${p.name}</span><span>${p.score}</span>
     </div>`).join('');
 
-  if (gameState.myId && players[gameState.myId]) {
-    const me = players[gameState.myId];
-    const bar = document.getElementById('nitroBar');
-    const ind = document.getElementById('speedIndicator');
-    bar.style.width = me.boostValue + '%';
-    
-    if (me.stunned) { bar.style.background = "#555"; bar.style.boxShadow = "none"; }
-    else if (me.isBoosting) {
-      ind.innerHTML = "BOOSTING"; ind.style.color = "#00f3ff";
-      bar.style.background = "linear-gradient(90deg, #0055ff, #00f3ff)";
-      bar.style.boxShadow = "0 0 20px #fff";
-    } else if (me.boostValue <= 1) {
-       ind.innerHTML = "DEPLETED"; ind.style.color = "#ff3366";
-    } else {
-      ind.innerHTML = "ONLINE"; ind.style.color = "var(--neon-blue)";
-      bar.style.boxShadow = "none";
-      bar.style.background = "linear-gradient(90deg, #0055ff, #00f3ff)";
-    }
+  // 2. Nitro Bar - Update every frame
+  updateNitroDisplay();
+}
+
+function updateNitroDisplay() {
+  if (!gameState.myId) return;
+  
+  const bar = document.querySelector('.nitro-fill');
+  const txt = document.querySelector('.nitro-text');
+  const ind = document.getElementById('speedIndicator');
+  
+  if (!bar || !txt || !ind) return;
+  
+  // Use local boost estimate for smooth updates
+  const pct = Math.max(0, Math.min(100, gameState.localBoostEstimate));
+  
+  // Update CSS Width - use exact value for smooth animation
+  bar.style.width = pct + '%';
+  
+  // Update Text Number
+  txt.innerText = Math.floor(pct) + "%";
+  
+  // Remove all state classes first
+  bar.classList.remove('boost-active', 'low-fuel', 'medium-fuel', 'system-failure');
+  
+  // Handle Colors based on amount and state
+  if (gameState.isStunned) {
+    ind.innerText = "SYSTEM FAIL";
+    ind.style.color = "#ff3366";
+    bar.classList.add('system-failure');
+  } else if (gameState.keys[' '] && pct > 1) {
+    ind.innerText = "BOOSTING";
+    ind.style.color = "#00f3ff";
+    bar.classList.add('boost-active');
+  } else if (pct < 20) {
+    ind.innerText = "LOW FUEL";
+    ind.style.color = "#ff3366";
+    bar.classList.add('low-fuel');
+  } else if (pct < 50) {
+    ind.innerText = Math.floor(pct) + "%";
+    ind.style.color = "#ffd700";
+    bar.classList.add('medium-fuel');
+  } else {
+    ind.innerText = Math.floor(pct) + "%";
+    ind.style.color = "#00ff66";
+    // Default state (high fuel) uses the base gradient
   }
 }
 
 function logEvent(text) {
-  const div = document.createElement('div'); div.className = 'log-msg';
+  const div = document.createElement('div'); 
+  div.className = 'log-msg';
   
-  // --- AUDIO TRIGGERS BASED ON SERVER EVENTS ---
   if (text.includes('NITRO')) {
     div.innerHTML = `>> <span style="color:#00f3ff">${text}</span>`;
     if(gameState.localPlayer && text.includes(document.getElementById('nickname').value)) {
@@ -753,7 +893,6 @@ function logEvent(text) {
   }
   else if (text.includes('EPIC')) {
      div.innerHTML = `>> <span style="color:#aa00ff; font-weight:bold">${text}</span>`;
-     // Trigger regular coin sound for now, or crash sound for impact
      if(gameState.localPlayer && text.includes(document.getElementById('nickname').value)) {
        AudioMgr.play('coin'); 
     }
@@ -764,8 +903,14 @@ function logEvent(text) {
        AudioMgr.play('crash');
     }
   }
+  else if (text.includes('DOMINATION') || text.includes('TIME\'S UP') || text.includes('VICTORY')) {
+    div.innerHTML = `>> <span style="color:#ffd700; font-weight:bold; text-shadow:0 0 10px gold">${text}</span>`;
+  }
   else div.innerHTML = `>> ${text}`;
   
-  const log = document.getElementById('eventLog'); log.prepend(div);
+  const log = document.getElementById('eventLog'); 
+  log.prepend(div);
   if(log.children.length > 7) log.lastChild.remove();
 }
+
+updateTimerDisplay();

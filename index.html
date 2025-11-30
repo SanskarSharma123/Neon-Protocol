@@ -78,6 +78,14 @@
         <div class="blink">SEARCHING FOR OPPONENT...</div>
         <div style="font-size:14px; margin-top:10px; color:#888; font-weight:400">WAITING FOR PLAYER 2</div>
       </div>
+      <div id="victoryOverlay" class="victory-overlay hidden">
+        <div class="victory-content">
+          <div id="victoryTitle" class="victory-title">VICTORY!</div>
+          <div id="victoryMessage" class="victory-message"></div>
+          <div id="victoryScores" class="victory-scores"></div>
+          <div class="victory-timer">New match starting in <span id="restartTimer">8</span> seconds...</div>
+        </div>
+      </div>
     </div>
 
     <div class="ui-panel">
@@ -86,14 +94,27 @@
         <div class="corner-decoration corner-tr"></div>
         <div class="corner-decoration corner-bl"></div>
         <div class="corner-decoration corner-br"></div>
-        <h3>System Status</h3>
-        <div class="nitro-label">
-          <span style="color:#888">NITRO</span>
-          <span id="speedIndicator" style="color:var(--neon-blue)">ONLINE</span>
+        
+        <h3>Match Status</h3>
+        <div id="matchTimer" style="font-size: 24px; font-weight: bold; text-align: center; color: var(--neon-blue); margin-bottom: 10px;">
+          5:00
         </div>
+        <div style="font-size: 12px; color: #888; text-align: center; margin-bottom: 15px;">
+          First to 50 points wins
+        </div>
+        
+        <h3>System Status</h3>
+        <!-- Replace this section in your UI panel -->
+        <div class="nitro-label">
+          <span style="color:#888">NITRO LEVEL</span>
+          <span id="speedIndicator" style="color:var(--neon-blue)">100%</span>
+        </div>
+
         <div class="nitro-container">
           <div id="nitroBar" class="nitro-fill" style="width: 100%;"></div>
+          <div id="nitroText" class="nitro-text">100%</div>
         </div>
+        
         <div style="font-size:12px; color:#666; margin-top:12px; text-align:center; font-weight:600">
           HOLD [SPACE] TO BOOST
         </div>
@@ -112,8 +133,9 @@
           <div class="rules">
             <div><strong style="color:#ffd700">● COIN:</strong> +1 Pt | <strong style="color:#aa00ff">MEGA:</strong> +3 Pts</div>
             <div><strong style="color:#ff3366">● MINE:</strong> -1 Point (Min 0)</div>
+            <div><strong style="color:#ff3366">● RAMMED:</strong> -1 Point</div>
             <div><strong style="color:#00f3ff">● NITRO:</strong> Collect to refuel.</div>
-            <div><strong style="color:#fff">● RAMMING:</strong> Boost into enemies to <span style="color:#ff3366">CRASH</span> them.</div>
+            <div><strong style="color:#fff">● RAMMING:</strong> Boost into enemies to <span style="color:#ff3366">STUN</span> them.</div>
           </div>
         </div>
       </div>
