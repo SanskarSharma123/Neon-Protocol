@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>NEON PROTOCOL // CHARACTER SELECT</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <div class="crt-overlay"></div>
+
+  <div class="settings-bar">
+    <div id="btnMusic" class="setting-btn active" onclick="AudioMgr.toggleMusic()">MUSIC: ON</div>
+    <div id="btnSfx" class="setting-btn active" onclick="AudioMgr.toggleSfx()">SFX: ON</div>
+  </div>
+
+  <div id="loginModal" class="modal">
+    <div class="login-box">
+      <div class="corner-decoration corner-tl"></div>
+      <div class="corner-decoration corner-tr"></div>
+      <div class="corner-decoration corner-bl"></div>
+      <div class="corner-decoration corner-br"></div>
+      <h2>Identify</h2>
+      <input type="text" id="nickname" placeholder="ENTER CALLSIGN" maxlength="10" />
+      <div class="color-options" id="colorPicker"></div>
+      <div style="font-size:12px; color:#888; margin-bottom:15px;"></div>
+      <button class="main-btn" onclick="showCharacterSelect()">SELECT PROFILE</button>
+    </div>
+  </div>
+
+  <div id="characterModal" class="modal hidden">
+    <div class="char-select-box">
+      <div class="corner-decoration corner-tl"></div>
+      <div class="corner-decoration corner-tr"></div>
+      <div class="corner-decoration corner-bl"></div>
+      <div class="corner-decoration corner-br"></div>
+      <h2>SELECT LOADOUT</h2>
+      <div class="character-grid" id="characterGrid"></div>
+      <div style="display:flex; justify-content: space-between; align-items: center;">
+        <div style="text-align:left">
+          <div id="previewName" style="font-weight:bold; font-size:20px; color:#fff">SPEEDSTER</div>
+          <div id="previewType" style="color:#888; font-size:14px">High Speed</div>
+        </div>
+        <button class="main-btn" style="width:200px" onclick="startGame()">INITIALIZE</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="chat-panel">
+      <div class="card" style="height: 100%; box-sizing: border-box;">
+        <div class="corner-decoration corner-tl"></div>
+        <div class="corner-decoration corner-tr"></div>
+        <div class="corner-decoration corner-bl"></div>
+        <div class="corner-decoration corner-br"></div>
+        <h3>Comms Link</h3>
+        <div id="chatHistory" class="chat-history"></div>
+        <div class="emoji-bar">
+          <div class="emoji-btn" onclick="sendChat('👋')">👋</div>
+          <div class="emoji-btn" onclick="sendChat('😂')">😂</div>
+          <div class="emoji-btn" onclick="sendChat('💀')">💀</div>
+          <div class="emoji-btn" onclick="sendChat('🤬')">🤬</div>
+          <div class="emoji-btn" onclick="sendChat('🏎️')">🏎️</div>
+          <div class="emoji-btn" onclick="sendChat('💥')">💥</div>
+        </div>
+        <div class="input-row">
+          <input type="text" id="chatInput" class="chat-input" placeholder="Transmit..." maxlength="40" style="margin-bottom:0">
+          <button class="send-btn" onclick="sendText()">></button>
+        </div>
+      </div>
+    </div>
+
+    <div style="position:relative;">
+      <canvas id="gameCanvas" width="1200" height="800"></canvas>
+      <div id="waitingOverlay">
+        <div class="blink">SEARCHING FOR OPPONENT...</div>
+        <div style="font-size:14px; margin-top:10px; color:#888; font-weight:400">WAITING FOR PLAYER 2</div>
+      </div>
+    </div>
+
+    <div class="ui-panel">
+      <div class="card">
+        <div class="corner-decoration corner-tl"></div>
+        <div class="corner-decoration corner-tr"></div>
+        <div class="corner-decoration corner-bl"></div>
+        <div class="corner-decoration corner-br"></div>
+        <h3>System Status</h3>
+        <div class="nitro-label">
+          <span style="color:#888">NITRO</span>
+          <span id="speedIndicator" style="color:var(--neon-blue)">ONLINE</span>
+        </div>
+        <div class="nitro-container">
+          <div id="nitroBar" class="nitro-fill" style="width: 100%;"></div>
+        </div>
+        <div style="font-size:12px; color:#666; margin-top:12px; text-align:center; font-weight:600">
+          HOLD [SPACE] TO BOOST
+        </div>
+      </div>
+
+      <div class="card" style="flex-grow:1">
+        <div class="corner-decoration corner-tl"></div>
+        <div class="corner-decoration corner-tr"></div>
+        <div class="corner-decoration corner-bl"></div>
+        <div class="corner-decoration corner-br"></div>
+        <h3>Leaderboard</h3>
+        <div id="scoreboard"></div>
+        
+        <div style="margin-top:20px; border-top:1px solid rgba(255,255,255,0.1); padding-top:15px;">
+          <h3>Tactical Data</h3>
+          <div class="rules">
+            <div><strong style="color:#ffd700">● COIN:</strong> +1 Pt | <strong style="color:#aa00ff">MEGA:</strong> +3 Pts</div>
+            <div><strong style="color:#ff3366">● MINE:</strong> -1 Point (Min 0)</div>
+            <div><strong style="color:#00f3ff">● NITRO:</strong> Collect to refuel.</div>
+            <div><strong style="color:#fff">● RAMMING:</strong> Boost into enemies to <span style="color:#ff3366">CRASH</span> them.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="corner-decoration corner-tl"></div>
+        <div class="corner-decoration corner-tr"></div>
+        <div class="corner-decoration corner-bl"></div>
+        <div class="corner-decoration corner-br"></div>
+        <h3>Combat Log</h3>
+        <div class="event-log" id="eventLog"></div>
+      </div>
+      
+      <div style="display:flex; justify-content:space-between; font-size:12px; color:#555; font-weight:600">
+        <span>LATENCY: <span id="rtt" style="color:#888">0</span>ms</span>
+        <span>INTERP: <span id="rdelay" style="color:#888">0</span>ms</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/game.js"></script>
+</body>
+</html>
