@@ -11,6 +11,10 @@
   --panel-glow: rgba(0, 243, 255, 0.1);
 }
 
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0; 
   font-family: 'Rajdhani', sans-serif;
@@ -19,8 +23,8 @@ body {
   display: flex; 
   flex-direction: column;
   align-items: center;
-  height: 100vh; 
-  overflow: hidden;
+  min-height: 100vh; 
+  overflow: auto;
   user-select: none;
   background-image: 
     radial-gradient(circle at 20% 30%, rgba(0, 243, 255, 0.05) 0%, transparent 50%),
@@ -39,6 +43,7 @@ body {
   gap: 20px;
   z-index: 1000;
   box-shadow: 0 2px 15px rgba(0, 0, 0, 0.5);
+  flex-shrink: 0;
 }
 .setting-btn {
   background: rgba(20, 20, 30, 0.8); 
@@ -50,7 +55,7 @@ body {
   cursor: pointer; 
   border-radius: 4px; 
   transition: all 0.3s;
-  font-size: 14px; 
+  font-size: clamp(12px, 2vw, 14px);
   letter-spacing: 1px;
   position: relative;
   overflow: hidden;
@@ -105,28 +110,40 @@ body {
   pointer-events: none;
 }
 
-/* --- LAYOUT CONTAINER --- */
+/* --- RESPONSIVE LAYOUT CONTAINER --- */
 .container { 
   display: flex; 
-  gap: 20px; 
+  gap: clamp(10px, 2vw, 20px);
   position: relative; 
   z-index: 1; 
-  width: 95vw; 
-  max-width: 1800px; 
-  height: calc(90vh - 40px); 
-  max-height: 800px;
+  width: min(95vw, 1800px);
+  height: min(calc(90vh - 40px), 800px);
   margin-top: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
 }
 
-canvas {
+/* Canvas Container */
+.game-canvas-container {
+  position: relative;
+  flex: 1 1 min(600px, 100%);
+  min-width: min(300px, 100%);
+  max-width: 1200px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#gameCanvas {
   background: #050508; 
   border: 1px solid rgba(0, 243, 255, 0.2);
   box-shadow: 
     0 0 60px rgba(0, 243, 255, 0.05),
     inset 0 0 30px rgba(0, 0, 0, 0.5);
   border-radius: 6px; 
-  height: 100%; 
-  width: auto;
+  width: 100%;
+  height: auto;
   aspect-ratio: 1200/800;
 }
 
@@ -139,26 +156,20 @@ canvas {
 }
 
 /* --- PANELS --- */
-.chat-panel { 
-  flex: 1; 
-  min-width: 250px; 
+.chat-panel, .ui-panel { 
+  flex: 1 1 min(250px, 100%);
+  min-width: min(250px, 100%);
+  max-width: min(350px, 100%);
   display: flex; 
   flex-direction: column; 
   height: 100%; 
-}
-.ui-panel { 
-  flex: 1; 
-  min-width: 250px; 
-  display: flex; 
-  flex-direction: column; 
-  gap: 16px; 
-  height: 100%; 
+  overflow: hidden;
 }
 
 .card {
   background: var(--panel-bg); 
   border: 1px solid var(--panel-border);
-  padding: 20px; 
+  padding: clamp(15px, 3vw, 20px);
   border-radius: 6px; 
   backdrop-filter: blur(10px);
   box-shadow: 
@@ -168,6 +179,7 @@ canvas {
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  height: 100%;
 }
 .card::before {
   content: '';
@@ -181,7 +193,7 @@ canvas {
 
 h3 { 
   margin: 0 0 12px; 
-  font-size: 16px; 
+  font-size: clamp(14px, 2vw, 16px);
   letter-spacing: 2px; 
   color: #fff; 
   text-transform: uppercase; 
@@ -206,7 +218,7 @@ h3::after {
   flex-grow: 1; 
   overflow-y: auto; 
   margin-bottom: 15px; 
-  font-size: 13px; 
+  font-size: clamp(12px, 1.5vw, 13px);
   font-weight: 500; 
   scrollbar-width: thin; 
   scrollbar-color: rgba(0, 243, 255, 0.3) transparent; 
@@ -271,6 +283,7 @@ h3::after {
   border-radius: 4px; 
   outline: none;
   transition: all 0.3s;
+  font-size: clamp(12px, 1.5vw, 14px);
 }
 .chat-input:focus { 
   border-color: var(--neon-blue); 
@@ -285,6 +298,7 @@ h3::after {
   padding: 0 15px; 
   border-radius: 4px; 
   transition: all 0.2s;
+  font-size: clamp(12px, 1.5vw, 14px);
 }
 .send-btn:hover { 
   background: #fff; 
@@ -299,7 +313,7 @@ h3::after {
   margin-bottom: 6px; 
   background: rgba(255,255,255,0.02); 
   border-radius: 4px; 
-  font-size: 15px; 
+  font-size: clamp(13px, 2vw, 15px);
   font-weight: 600; 
   border-left: 2px solid transparent;
   transition: all 0.2s;
@@ -320,7 +334,7 @@ h3::after {
   display: flex; 
   flex-direction: column-reverse; 
   font-family: monospace; 
-  font-size: 12px; 
+  font-size: clamp(11px, 1.5vw, 12px);
 }
 .log-msg { 
   padding: 6px 0; 
@@ -334,7 +348,7 @@ h3::after {
 }
 
 .rules { 
-  font-size: 13px; 
+  font-size: clamp(12px, 1.5vw, 13px);
   color: #999; 
   line-height: 1.8; 
 }
@@ -349,27 +363,28 @@ h3::after {
   top: 50%; 
   left: 50%; 
   transform: translate(-50%, -50%);
-  font-size: 28px; 
+  font-size: clamp(18px, 4vw, 28px);
   color: #fff; 
   font-weight: 700; 
-  letter-spacing: 4px;
+  letter-spacing: clamp(2px, 1vw, 4px);
   text-shadow: 0 0 20px var(--neon-blue); 
   text-align: center;
   pointer-events: none; 
   opacity: 0; 
   transition: opacity 0.5s;
   background: rgba(10, 10, 15, 0.8);
-  padding: 30px 50px;
+  padding: clamp(20px, 4vw, 30px) clamp(30px, 6vw, 50px);
   border-radius: 8px;
   border: 1px solid rgba(0, 243, 255, 0.2);
   box-shadow: 0 0 40px rgba(0, 243, 255, 0.1);
+  max-width: 90%;
 }
 .blink { animation: blink 1.5s infinite; }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
 /* --- MODALS --- */
 .modal { 
-  position: absolute; 
+  position: fixed; 
   top: 0; 
   left: 0; 
   width: 100%; 
@@ -379,10 +394,12 @@ h3::after {
   justify-content: center; 
   align-items: center; 
   z-index: 100; 
+  padding: 20px;
+  box-sizing: border-box;
 }
 .login-box, .char-select-box { 
   background: #0a0a0a; 
-  padding: 40px; 
+  padding: clamp(20px, 5vw, 40px);
   border: 1px solid rgba(0, 243, 255, 0.3); 
   text-align: center; 
   box-shadow: 
@@ -392,9 +409,11 @@ h3::after {
   border-radius: 8px;
   position: relative;
   overflow: hidden;
+  width: min(95vw, 400px);
 }
-.login-box { width: 340px; }
-.char-select-box { width: 800px; max-width: 90vw; }
+.char-select-box { 
+  width: min(95vw, 800px);
+}
 
 .login-box::before, .char-select-box::before {
   content: '';
@@ -406,10 +425,10 @@ h3::after {
   background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
 }
 .login-box h2, .char-select-box h2 { 
-  font-size: 24px; 
+  font-size: clamp(20px, 4vw, 24px);
   color: var(--neon-blue); 
   margin-top: 0; 
-  letter-spacing: 4px; 
+  letter-spacing: clamp(2px, 1vw, 4px);
   text-transform: uppercase; 
   text-shadow: 0 0 15px var(--neon-blue);
 }
@@ -422,7 +441,7 @@ input {
   text-align: center; 
   margin-bottom: 20px; 
   font-family: 'Rajdhani'; 
-  font-size: 18px; 
+  font-size: clamp(16px, 3vw, 18px);
   font-weight: bold; 
   outline:none; 
   box-sizing: border-box; 
@@ -438,10 +457,11 @@ input:focus {
   justify-content: center; 
   gap: 12px; 
   margin-bottom: 25px; 
+  flex-wrap: wrap;
 }
 .color-swatch { 
-  width: 32px; 
-  height: 32px; 
+  width: clamp(28px, 4vw, 32px);
+  height: clamp(28px, 4vw, 32px);
   border-radius: 4px; 
   cursor: pointer; 
   border: 2px solid #222; 
@@ -465,7 +485,7 @@ input:focus {
   font-weight: 800; 
   cursor: pointer; 
   font-family: 'Rajdhani'; 
-  font-size: 18px; 
+  font-size: clamp(16px, 3vw, 18px);
   color: #000; 
   text-transform: uppercase; 
   letter-spacing: 2px; 
@@ -492,15 +512,15 @@ input:focus {
 /* --- CHARACTER GRID --- */
 .character-grid { 
   display: grid; 
-  grid-template-columns: repeat(3, 1fr); 
-  gap: 20px; 
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+  gap: clamp(10px, 2vw, 20px);
   margin-bottom: 30px; 
 }
 .character-card { 
   background: rgba(20, 20, 30, 0.8); 
   border: 2px solid rgba(0, 243, 255, 0.2); 
   border-radius: 8px; 
-  padding: 20px; 
+  padding: clamp(15px, 3vw, 20px);
   cursor: pointer; 
   transition: all 0.2s; 
   opacity: 0.7;
@@ -521,7 +541,7 @@ input:focus {
   box-shadow: 0 0 30px rgba(0, 243, 255, 0.3);
 }
 .character-icon { 
-  font-size: 40px; 
+  font-size: clamp(30px, 5vw, 40px);
   margin-bottom: 10px; 
 }
 .stat-bar { 
@@ -535,6 +555,15 @@ input:focus {
   height: 100%; 
   background: var(--neon-blue); 
   border-radius: 2px;
+}
+
+/* Character Preview */
+.character-preview {
+  display:flex; 
+  justify-content: space-between; 
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
 }
 
 /* --- CORNER DECORATIONS --- */
@@ -569,6 +598,7 @@ input:focus {
   border-left: none;
   border-top: none;
 }
+
 /* --- VICTORY OVERLAY --- */
 .victory-overlay {
   position: absolute;
@@ -587,10 +617,10 @@ input:focus {
 .victory-content {
   background: var(--panel-bg);
   border: 2px solid var(--neon-blue);
-  padding: 40px;
+  padding: clamp(20px, 5vw, 40px);
   border-radius: 8px;
   text-align: center;
-  max-width: 500px;
+  width: min(95vw, 500px);
   box-shadow: 0 0 50px rgba(0, 243, 255, 0.3);
   animation: pulse-glow 2s infinite;
 }
@@ -601,11 +631,11 @@ input:focus {
 }
 
 .victory-title {
-  font-size: 48px;
+  font-size: clamp(28px, 8vw, 48px);
   font-weight: 800;
   color: var(--neon-blue);
   text-transform: uppercase;
-  letter-spacing: 4px;
+  letter-spacing: clamp(2px, 1vw, 4px);
   margin-bottom: 20px;
   text-shadow: 0 0 20px var(--neon-blue);
   animation: text-glow 1.5s ease-in-out infinite alternate;
@@ -617,21 +647,21 @@ input:focus {
 }
 
 .victory-message {
-  font-size: 24px;
+  font-size: clamp(18px, 4vw, 24px);
   color: #fff;
   margin-bottom: 30px;
   font-weight: 600;
 }
 
 .victory-scores {
-  font-size: 18px;
+  font-size: clamp(14px, 3vw, 18px);
   color: #ccc;
   margin-bottom: 25px;
   line-height: 1.6;
 }
 
 .victory-timer {
-  font-size: 16px;
+  font-size: clamp(14px, 2vw, 16px);
   color: #888;
   font-weight: 600;
 }
@@ -652,11 +682,9 @@ input:focus {
   50% { opacity: 0.7; }
 }
 
-/* --- NITRO BAR (Consolidated) --- */
-/* --- NITRO BAR --- */
 /* --- NITRO BAR --- */
 .nitro-label { 
-  font-size: 14px; 
+  font-size: clamp(12px, 2vw, 14px);
   font-weight: 700; 
   display: flex; 
   justify-content: space-between;
@@ -674,24 +702,25 @@ input:focus {
   box-shadow: 
     inset 0 2px 4px rgba(0, 0, 0, 0.5),
     0 0 10px rgba(0, 243, 255, 0.1);
+  width: 100%;
 }
 
 .nitro-fill { 
   position: absolute;
   top: 0;
   left: 0;
-  bottom: 0;
+  height: 100%;
   width: 100%;
-  background: linear-gradient(90deg, #00ff66, #00ffaa); 
+  background: linear-gradient(90deg, #00ff66, #00ffaa);
   border-radius: 12px;
   box-shadow: 
     0 0 15px rgba(0, 255, 102, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  transition: width 0.1s ease-out, background 0.3s; 
+  transition: width 0.1s ease-out;
   z-index: 1;
+  min-width: 5px;
 }
 
-/* Add a subtle inner glow effect */
 .nitro-fill::after {
   content: '';
   position: absolute;
@@ -710,13 +739,14 @@ input:focus {
   position: absolute; 
   width: 100%; 
   text-align: center; 
-  top: 3px; 
-  font-size: 12px; 
+  line-height: 26px;
+  font-size: clamp(11px, 2vw, 12px);
   font-weight: bold; 
   color: #fff; 
   text-shadow: 0 0 4px #000, 0 0 8px currentColor;
   letter-spacing: 1px; 
   z-index: 2;
+  pointer-events: none;
 }
 
 /* Dynamic color states for the nitro bar */
@@ -747,47 +777,93 @@ input:focus {
     inset 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
-/* ADD THIS TO YOUR style.css - NITRO BAR FIX */
-.nitro-container { 
-  margin-top: 5px; 
-  background: rgba(20, 20, 30, 0.9) !important; 
-  border: 1px solid rgba(0, 243, 255, 0.3) !important; 
-  height: 26px !important; 
-  border-radius: 13px !important; 
-  overflow: hidden !important; 
-  position: relative !important; 
-  box-shadow: 
-    inset 0 2px 4px rgba(0, 0, 0, 0.5),
-    0 0 10px rgba(0, 243, 255, 0.1) !important;
-  width: 100% !important;
+/* --- SINGLE AUTOMATIC RESPONSIVE RULE --- */
+/* This handles all screen sizes automatically */
+@media (max-width: 1024px) {
+  .container {
+    flex-direction: column;
+    height: auto;
+    max-height: none;
+  }
+  
+  .game-canvas-container {
+    order: -1;
+    width: 100%;
+  }
+  
+  .chat-panel, .ui-panel {
+    width: 100%;
+    max-width: 100%;
+    flex-direction: row;
+    gap: clamp(10px, 2vw, 20px);
+  }
+  
+  .chat-panel > .card,
+  .ui-panel > .card {
+    flex: 1;
+    min-height: 200px;
+  }
+}
+.leaderboard-wrapper {
+  flex: 1 1 auto;             /* Takes up all remaining vertical space */
+  overflow-y: auto;           /* Adds scrollbar ONLY to the list, not the whole page */
+  min-height: 0;              /* Crucial for flexbox scrolling to work */
+  padding-right: 5px;         /* Space for scrollbar */
+  margin-top: 10px;
+  
+  /* Scrollbar styling to match Chat */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 243, 255, 0.3) transparent;
 }
 
-.nitro-fill { 
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  height: 100% !important;
-  width: 100% !important;
-  background: linear-gradient(90deg, #00ff66, #00ffaa) !important; 
-  border-radius: 12px !important;
-  box-shadow: 
-    0 0 15px rgba(0, 255, 102, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
-  transition: width 0.1s ease-out !important; 
-  z-index: 1 !important;
-  min-width: 5px !important;
+.leaderboard-wrapper::-webkit-scrollbar { width: 4px; }
+.leaderboard-wrapper::-webkit-scrollbar-thumb { 
+  background: rgba(0, 243, 255, 0.3); 
+  border-radius: 2px;
 }
 
-.nitro-text { 
-  position: absolute !important; 
-  width: 100% !important; 
-  text-align: center !important; 
-  line-height: 26px !important;
-  font-size: 12px !important; 
-  font-weight: bold !important; 
-  color: #fff !important; 
-  text-shadow: 0 0 4px #000, 0 0 8px currentColor !important;
-  letter-spacing: 1px !important; 
-  z-index: 2 !important;
-  pointer-events: none !important;
+/* --- UPDATED PLAYER ROW --- */
+.player-row {
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center;        /* Ensures text is vertically centered */
+  
+  /* RESPONSIVE DESIGN: 
+     Adjusts padding and font-size based on Viewport Height (vh) 
+     so it looks good on both small windows and Full Screen. */
+  padding: clamp(8px, 1.5vh, 12px) 12px; 
+  margin-bottom: 4px; 
+  
+  background: rgba(255, 255, 255, 0.03); 
+  border-radius: 4px; 
+  border-left: 2px solid transparent;
+  
+  /* Typography Scaling */
+  font-size: clamp(12px, 1.5vh, 16px); 
+  font-weight: 600; 
+  letter-spacing: 0.5px;
+  
+  /* Prevents row from collapsing or text wrapping awkwardly */
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.player-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateX(2px);
+}
+
+.player-row.me { 
+  border-left: 3px solid var(--neon-blue); 
+  background: linear-gradient(90deg, rgba(0, 243, 255, 0.15), transparent); 
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.05);
+  color: #fff;
+}
+
+/* OPTIONAL: Handle very long names */
+.player-row span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60%;
 }

@@ -106,6 +106,39 @@ let gameState = {
   gameOver: false
 };
 
+/* --- RESPONSIVE CANVAS SETUP --- */
+function setupResponsiveCanvas() {
+  const canvas = document.getElementById('gameCanvas');
+  const container = canvas.parentElement;
+  
+  function resizeCanvas() {
+    const containerWidth = container.clientWidth;
+    const maxWidth = 1200; // Original canvas width
+    
+    if (containerWidth < maxWidth) {
+      // Scale down canvas proportionally
+      const scale = containerWidth / maxWidth;
+      canvas.style.width = containerWidth + 'px';
+      canvas.style.height = (800 * scale) + 'px';
+    } else {
+      // Use original size
+      canvas.style.width = '1200px';
+      canvas.style.height = '800px';
+    }
+  }
+  
+  // Initial resize
+  resizeCanvas();
+  
+  // Resize on window change
+  window.addEventListener('resize', resizeCanvas);
+}
+
+// Initialize responsive canvas when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  setupResponsiveCanvas();
+});
+
 /* --- UI SETUP --- */
 const picker = document.getElementById('colorPicker');
 COLORS.forEach((c, i) => {
